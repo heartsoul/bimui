@@ -1,6 +1,6 @@
 {
-    "name": "bimui",
-    "version": "0.0.1",
+    "name": "react-native-bimui",
+    "version": "0.0.2",
     "description": "A UI library for react native.",
     "main": "index.js",
     "scripts": {
