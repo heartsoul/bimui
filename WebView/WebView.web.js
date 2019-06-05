@@ -1,16 +1,40 @@
-/* eslint-disable react/no-string-refs */
-/* eslint-disable jsx-a11y/iframe-has-title */
-/* eslint-disable react/prop-types */
-/* eslint-disable react/destructuring-assignment */
+
 import React from 'react';
+import PropTypes from 'prop-types';
 
 export default class WebView extends React.Component {
+    static propTypes = {
+        landscape: PropTypes.bool,
+        onMessage: PropTypes.func,
+        onLoad: PropTypes.func,
+        injectedJavaScript: PropTypes.string,
+        source: PropTypes.shape({
+                    /**
+                     * 标题
+                     */
+                    uri: PropTypes.string,
+                    /**
+                     * 标题颜色
+                     */
+                    html: PropTypes.string,
+                }),
+    };
+
+    static defaultProps = {
+        landscape: false,
+        onMessage: null,
+        onLoad: null,
+        injectedJavaScript: null,
+        source: { html: '<div>参数无效</div>' },
+    };
+
     constructor(props) {
         super(props);
         const uniqueKey = this.genUniqueKey();
         this.state = {
             uniqueKey,
         };
+        this.webFrameRef = null;
     }
 
     /**
@@ -19,11 +43,12 @@ export default class WebView extends React.Component {
     genUniqueKey = () => `webRef_${Number(Math.random().toString().substr(3, 5) + Date.now()).toString(36)}`;
 
     injectJavaScript = (script) => {
-        this.refs.webFrame.contentWindow.window.eval(`${script} ${this.getWebCoreBridgeJS()}`);
+        if (this.webFrameRef) {
+            this.webFrameRef.contentWindow.window.eval(`${script} ${this.getWebCoreBridgeJS()}`);
+        }
     }
 
     onMessage = (e) => {
-        // eslint-disable-next-line react/prop-types
         const { onMessage } = this.props;
         if (onMessage) {
             onMessage(e);
@@ -57,19 +82,19 @@ export default class WebView extends React.Component {
 
     componentDidMount = () => {
         const { injectedJavaScript, source } = this.props;
-        if (this.refs.webFrame.attachEvent) {
-            this.refs.webFrame.attachEvent('onload', () => {
+        if (this.webFrameRef.attachEvent) {
+            this.webFrameRef.attachEvent('onload', () => {
                 if (injectedJavaScript) {
-                    this.injectJavaScript(`javascript:${this.props.injectedJavaScript}`);
+                    this.injectJavaScript(`javascript:${injectedJavaScript}`);
                 }
             });
         } else {
-            this.refs.webFrame.onload = () => {
+            this.webFrameRef.onload = () => {
                 if (injectedJavaScript) {
-                    this.injectJavaScript(`javascript:${this.props.injectedJavaScript}`);
+                    this.injectJavaScript(`javascript:${injectedJavaScript}`);
                 }
                 if (source.html) {
-                    const htmlNode = this.refs.webFrame.contentWindow.document.getElementById('loadingNode');
+                    const htmlNode = this.webFrameRef.contentWindow.document.getElementById('loadingNode');
                     htmlNode.innerHTML = source.html;
                 }
                 const { onLoad } = this.props;
@@ -86,11 +111,13 @@ export default class WebView extends React.Component {
     }
 
     renderUrl = (url) => {
+        const { landscape = false } = this.props;
         const off = Math.abs((document.body.clientWidth - document.body.clientHeight) / 2);
-        const myStyle = this.props.landscape ? { transform: `matrix(0,1,-1,0,${-off},${off})`, width: document.body.clientHeight, height: document.body.clientWidth } : { width: '100%', height: '100%' };
+        const myStyle = landscape ? { transform: `matrix(0,1,-1,0,${-off},${off})`, width: document.body.clientHeight, height: document.body.clientWidth } : { width: '100%', height: '100%' };
         return (
         <iframe
-            ref="webFrame"
+            title="title"
+            ref={(ref) => { this.webFrameRef = ref; }}
             name="myFrame"
             src={url}
             style={myStyle}
@@ -99,16 +126,21 @@ export default class WebView extends React.Component {
         );
     }
 
-    renderHtml = html => (
+    renderHtml = (html) => {
+        const { landscape = false } = this.props;
+        const off = Math.abs((document.body.clientWidth - document.body.clientHeight) / 2);
+        const myStyle = landscape ? { transform: `matrix(0,1,-1,0,${-off},${off})`, width: document.body.clientHeight, height: document.body.clientWidth } : { width: '100%', height: '100%' };
+        return (
         <iframe
-            ref="webFrame"
+            title="title"
+            ref={(ref) => { this.webFrameRef = ref; }}
             name="myFrame"
             srcDoc={html}
-            height="100%"
-            width="100%"
+            style={myStyle}
             frameBorder={0}
         />
-    )
+        );
+    }
 
     render = () => {
         const { source } = this.props;
