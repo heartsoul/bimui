@@ -1,7 +1,7 @@
-import ThemeDefault from './AppTheme.default'
-import AppTheme from './AppTheme'
+import ThemeDefault from './AppTheme/AppTheme.default';
+import AppTheme from './AppTheme/AppTheme';
 
 export {
-   ThemeDefault, 
+   ThemeDefault,
    AppTheme,
-}
+};

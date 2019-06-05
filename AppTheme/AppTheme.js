@@ -36,7 +36,7 @@ const AppTheme = {
   },
 
   set(theme) {
-    Object.assign(this, theme)
+    Object.assign(this, theme);
   },
 
   isPad,
@@ -74,4 +74,5 @@ const AppTheme = {
   },
 }
 AppTheme.set(AppTheme.themes.default);
-module.exports = AppTheme
+// module.exports = AppTheme
+export default AppTheme;
