@@ -26,6 +26,15 @@
     "homepage": "https://github.com/heartsoul/bimui#readme",
     "dependencies": {
       "prop-types": "^15.5.10"
+    },
+    "devDependencies": {
+      "babel-preset-react":""
+    },
+    "peerDependencies": {
+      "react-native": "",
+      "react":"",
+      "prop-types": ""
+      
     }
   }
   
