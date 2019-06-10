@@ -1,1 +1,4 @@
-export * from 'react-art';
+
+import * as ART from 'react-art';
+
+export default { ...ART };
