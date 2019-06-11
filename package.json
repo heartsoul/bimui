@@ -30,13 +30,6 @@
     },
     "devDependencies": {
       "babel-preset-react":""
-    },
-    "peerDependencies": {
-      "react-native": "",
-      "react":"",
-      "prop-types": "",
-      "react-art":""
-      
     }
   }
   
