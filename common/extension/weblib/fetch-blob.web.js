@@ -208,7 +208,8 @@ function fetchBlob(...args) {
     // create task ID for receiving progress event
 
     const taskId = getUUID();
-    const [url, bodys] = [...args];
+    // eslint-disable-next-line no-unused-vars
+    const [method, url, headers, bodys] = [...args];
     // let [body] = bodys;
     // from remote HTTP(S)
     const promise = new Promise((resolve, reject) => {
