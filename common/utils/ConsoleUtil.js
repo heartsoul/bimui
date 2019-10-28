@@ -9,6 +9,7 @@ export function initConsole() {
             warn: () => { },
             debug: () => { },
             error: () => { },
+            assert: () => { },
         };
     }
 }
