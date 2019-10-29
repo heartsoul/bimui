@@ -3,7 +3,7 @@
 import { PixelRatio } from 'react-native'
 
 // primary color
-const primaryColor = '#20bf8a'
+const primaryColor = '#007440'
 // secondary color
 const secondaryColor = '#83de6c'
 // default color
@@ -57,7 +57,7 @@ export default {
   btnColor: defaultColor,
   btnPrimaryColor: primaryColor,
   btnSecondaryColor: secondaryColor,
-  btnPressedColor:'#1eb582',
+  btnPressedColor:'#00532E',
   btnDangerColor: '#e34043',
   btnLinkColor: 'rgba(0, 0, 0, 0)',
   // Button - title color
