@@ -83,7 +83,7 @@ function checkStatus(response) {
         console.log('请联系管理员获取相应操作权限(code:401)');
         // printErr(response);
         error.response = response;
-        // error.needLogin = true;
+        error.needLogin = true;
         throw error;
     } else if (response.status === 500) {
         // alert('数据获取失败(code:500).');
@@ -154,100 +154,155 @@ function checkStatusBlob(response) {
     error.response.status = response.respInfo.status;
     throw error;
 }
-/**
- * Requests a URL, returning a promise.
- *
- * @param  {string} url       The URL we want to request
- * @param  {object} [options] The options we want to pass to "fetch"
- * isSpecial： 默认false 是否不进行返回数据错误统一处理，true：不进行处理，后续参数设置无效
- * syncKey：请求唯一，防止多次请求 silent：静默模式，设置后即使401了也不会跳到登录页面
- * @return {object}           An object containing either "data" or "err"
- */
-export function requestJSON(url, options) {
-    let ops = {
+
+function processOptions(options) {
+    const ops = {
         headers: {
             Accept: 'application/json',
             'Content-Type': 'application/json;charset=utf-8',
             'X-Requested-With': 'XMLHttpRequest',
             'Cache-Control': 'no-cache',
         },
-
         // credentials: 'include', // 带上cookie
     };
-    // console.log('tokey===',storage.getLoginToken())
-    // Authorization  Bearer 6515033c-6c5f-4d6a-8033-ec0906d4f085
-    if (storage.isLogin() && storage.getLoginToken() != 'cookie_token') {
-        ops.headers.Authorization = `Bearer ${storage.getLoginToken()}`;
-    }
-    if (storage.isLogin() && storage.loadLastTenant()) {
-        const t = storage.loadLastTenant();
-        if (t && t != '0') {
-            ops.headers['X-CORAL-TENANT'] = t;
-        }
-    }
+    // // console.log('tokey===',storage.getLoginToken())
+    // // Authorization  Bearer 6515033c-6c5f-4d6a-8033-ec0906d4f085
+    // if (storage.isLogin() && storage.getLoginToken() != 'cookie_token') {
+    //     ops.headers.Authorization = `Bearer ${storage.getLoginToken()}`;
+    // }
+    // if (storage.isLogin() && storage.loadLastTenant()) {
+    //     const t = storage.loadLastTenant();
+    //     if (t && t != '0') {
+    //         ops.headers['X-CORAL-TENANT'] = t;
+    //     }
+    // }
     for (const i in ops) {
         if (options[i]) {
             options[i] = ops[i] = { ...ops[i], ...options[i] };
         }
     }
-    ops = { ...ops, ...options };
+    return { ...ops, ...options };
+}
 
-    if (ops.isSpecial) {
-        if (Platform.OS === 'web') {
-            return fetch(BASE_URL + url, ops);
+/**
+ * Requests a URL, returning a promise.
+ *
+ * @param  {string} url       The URL we want to request
+ * @param  {object} [options] The options we want to pass to "fetch"
+ * @return {object} 原样返回请求数据，不进行处理
+ */
+export function requestSimple(url, options) {
+    const ops = processOptions(options);
+    if (Platform.OS === 'web') {
+        return fetch(BASE_URL + url, ops);
+    }
+    const task = RNFetchBlob.fetch(ops.method, BASE_URL + url, ops.headers, ops.body);
+    return task.progress({ interval: 500 }, (received, total) => {
+        if (ops.progress) {
+            ops.progress(received, total, task);
         }
-        const task = RNFetchBlob.fetch(ops.method, BASE_URL + url, ops.headers, ops.body);
-        return task.progress({ interval: 500 }, (received, total) => {
-            if (ops.progress) {
-                ops.progress(received, total, task);
-            }
-        }).uploadProgress({ interval: 500 }, (sent, total) => {
-            if (ops.uploadProgress) {
-                ops.onProgress(sent, total, task);
-            }
-        });
+    }).uploadProgress({ interval: 500 }, (sent, total) => {
+        if (ops.uploadProgress) {
+            ops.onProgress(sent, total, task);
+        }
+    });
+}
+
+// 处理重复请求
+function canRequest(options) {
+    const { syncKey = null } = options || {};
+    if (!syncKey) {
+        return true;
     }
 
-    if (ops.syncKey && Platform.OS !== 'web') {
-        let findTask = apiTaskLst[ops.syncKey];
-        try {
-            if (findTask) {
-                console.log('！！！重复调用！');
-                apiTaskLst[ops.syncKey] = null;
-                delete apiTaskLst[ops.syncKey];
-                if (findTask.cancel) {
-                    findTask.cancel();
-                }
+    let findTask = apiTaskLst[syncKey] || {};
+    const { taskItem, expries } = findTask;
+    try {
+        if (taskItem) {
+            const tms = new Date().getTime();
+            if (expries && tms < expries) {
+                console.log('！！！重复调用！短期内');
+                return false;
             }
-        } catch (error) {
-            console.log(error);
+            console.log('！！！重复调用！');
+            apiTaskLst[syncKey] = null;
+            delete apiTaskLst[syncKey];
+            if (findTask.cancel) {
+                findTask.cancel();
+            }
         }
-        findTask = null;
+    } catch (error) {
+        console.log(error);
+    }
+    findTask = null;
+    return true;
+}
 
-        const task = RNFetchBlob.fetch(ops.method, BASE_URL + url, ops.headers, ops.body);
-        apiTaskLst[ops.syncKey] = task;
-        return task.progress({ interval: 500 }, (received, total) => {
-            if (ops.progress) {
-                ops.progress(received, total, task);
-            }
-        }).uploadProgress({ interval: 500 }, (sent, total) => {
-            if (ops.uploadProgress) {
-                ops.onProgress(sent, total, task);
-            }
-        }).then(checkStatusBlob).then(parseJSONBlob)
-            .then((data) => {
-                if (apiTaskLst[ops.syncKey] != task) {
-                    throw new Error('cancel');
+/**
+ * Requests a URL, returning a promise.
+ *
+ * @param  {string} url       The URL we want to request
+ * @param  {object} [options] The options we want to pass to "fetch"
+ * forceFetch: 直接使用fetch请求
+ * syncKey：请求唯一，防止多次请求
+ * expires: 过期时间，毫秒与syncKey配合使用，在过期之前都不会重复请求，如果没设置，则直接取消上次的请求（web版本没有取消功能）
+ * silent：静默模式，设置后即使401了也不会跳到登录页面
+ * @return {object}           An object containing either "data" or "err"
+ */
+export function requestJSON(url, options) {
+    return new Promise((resolve, reject) => {
+        const ops = processOptions(options);
+        const { syncKey = null, expries = null, forceFetch } = ops || {};
+        if (!canRequest(ops)) {
+            reject(new Error('重复请求'));
+            return;
+        }
+        let taskItem = {};
+        if (Platform.OS === 'web' || !syncKey || forceFetch) {
+            taskItem = fetch(BASE_URL + url, ops)
+            .then(checkStatus)
+            .then(parseJSON);
+        } else {
+            taskItem = RNFetchBlob.fetch(ops.method, BASE_URL + url, ops.headers, ops.body)
+            .progress({ interval: 500 }, (received, total) => {
+                if (ops.progress) {
+                    ops.progress(received, total, taskItem);
                 }
-                apiTaskLst[ops.syncKey] = null;
-                delete apiTaskLst[ops.syncKey];
+            }).uploadProgress({ interval: 500 }, (sent, total) => {
+                if (ops.uploadProgress) {
+                    ops.onProgress(sent, total, taskItem);
+                }
+            }).then(checkStatusBlob)
+            .then(parseJSONBlob);
+        }
+        if (syncKey) {
+            apiTaskLst[syncKey] = {
+                expries,
+                taskItem,
+            };
+        }
+        taskItem.then((data) => {
+                if (syncKey) {
+                    const { taskItem: taskItemFind = null } = apiTaskLst[syncKey] || {};
+                    if (taskItemFind != taskItem) {
+                        throw new Error('cancel'); // 任务被取消了
+                    }
+                    apiTaskLst[syncKey] = null;
+                    delete apiTaskLst[syncKey];
+                }
+                if (resolve) {
+                    setTimeout(() => {
+                        resolve({ data });
+                    }, 6000);
+                    // resolve({ data });
+                }
                 return { data };
             })
             .catch((err) => {
                 try {
-                    if (apiTaskLst[ops.syncKey] == task) {
-                        apiTaskLst[ops.syncKey] = null;
-                        delete apiTaskLst[ops.syncKey];
+                    if (syncKey) {
+                        apiTaskLst[syncKey] = null;
+                        delete apiTaskLst[syncKey];
                     }
                 } catch (error) {
                     console.log(error);
@@ -261,36 +316,13 @@ export function requestJSON(url, options) {
                         err.OffNetWork = true;// 没有连接到网络
                     }
                 }
-                if (err.needLogin) {
-                    storage.gotoLogin();
+                if (reject) {
+                    reject(err);
+                } else {
+                    throw err;
                 }
-                throw err;
             });
-    }
-    // RNFetchBlob.fetch(ops.method, BASE_URL + url, ops.headers, ops.body)
-    // console.log(">>>请求信息："+BASE_URL + url);
-    // console.log(ops)
-
-    return fetch(BASE_URL + url, ops)
-        .then(checkStatus)
-        .then(parseJSON)
-        .then(data => ({ data }))
-        .catch((err) => {
-            // console.log('error/////////',err)
-            // err.response.text().then((result)=>{
-            //     console.log('result11-',result)
-            // })
-            // 当没有网络时，JSONS.stringfy(err) === {}  这时添加没有网络的标志
-            if (err) {
-                if (!err.response) {
-                    err.OffNetWork = true;// 没有连接到网络
-                }
-                if (err.needLogin && !ops.slient) {
-                    storage.gotoLogin();
-                }
-            }
-            throw err;
-        });
+    }).then(data => data);
 }
 
 /**
