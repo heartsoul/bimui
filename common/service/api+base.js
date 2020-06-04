@@ -291,10 +291,7 @@ export function requestJSON(url, options) {
                     delete apiTaskLst[syncKey];
                 }
                 if (resolve) {
-                    setTimeout(() => {
-                        resolve({ data });
-                    }, 6000);
-                    // resolve({ data });
+                    resolve({ data });
                 }
                 return { data };
             })
