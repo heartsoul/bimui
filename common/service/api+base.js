@@ -163,22 +163,12 @@ function processOptions(options) {
             'X-Requested-With': 'XMLHttpRequest',
             'Cache-Control': 'no-cache',
         },
-        // credentials: 'include', // 带上cookie
     };
-    // // console.log('tokey===',storage.getLoginToken())
-    // // Authorization  Bearer 6515033c-6c5f-4d6a-8033-ec0906d4f085
-    // if (storage.isLogin() && storage.getLoginToken() != 'cookie_token') {
-    //     ops.headers.Authorization = `Bearer ${storage.getLoginToken()}`;
-    // }
-    // if (storage.isLogin() && storage.loadLastTenant()) {
-    //     const t = storage.loadLastTenant();
-    //     if (t && t != '0') {
-    //         ops.headers['X-CORAL-TENANT'] = t;
-    //     }
-    // }
     for (const i in ops) {
-        if (options[i]) {
-            options[i] = ops[i] = { ...ops[i], ...options[i] };
+        if (options[i] && typeof options[i]) {
+            if (typeof options[i] == 'object') {
+                options[i] = ops[i] = { ...ops[i], ...options[i] };
+            }
         }
     }
     return { ...ops, ...options };
@@ -189,14 +179,15 @@ function processOptions(options) {
  *
  * @param  {string} url       The URL we want to request
  * @param  {object} [options] The options we want to pass to "fetch"
+ * @param  {string} server     The host we want to request defalut BASE_URL
  * @return {object} 原样返回请求数据，不进行处理
  */
-export function requestSimple(url, options) {
+export function requestSimple(url, options, server = null) {
     const ops = processOptions(options);
     if (Platform.OS === 'web') {
-        return fetch(BASE_URL + url, ops);
+        return fetch((server || BASE_URL) + url, ops);
     }
-    const task = RNFetchBlob.fetch(ops.method, BASE_URL + url, ops.headers, ops.body);
+    const task = RNFetchBlob.fetch(ops.method, (server || BASE_URL) + url, ops.headers, ops.body);
     return task.progress({ interval: 500 }, (received, total) => {
         if (ops.progress) {
             ops.progress(received, total, task);
@@ -249,7 +240,7 @@ function canRequest(options) {
  * silent：静默模式，设置后即使401了也不会跳到登录页面
  * @return {object}           An object containing either "data" or "err"
  */
-export function requestJSON(url, options) {
+export function requestJSON(url, options, server = null) {
     return new Promise((resolve, reject) => {
         const ops = processOptions(options);
         const { syncKey = null, expries = null, forceFetch } = ops || {};
@@ -259,11 +250,11 @@ export function requestJSON(url, options) {
         }
         let taskItem = {};
         if (Platform.OS === 'web' || !syncKey || forceFetch) {
-            taskItem = fetch(BASE_URL + url, ops)
+            taskItem = fetch((server || BASE_URL) + url, ops)
             .then(checkStatus)
             .then(parseJSON);
         } else {
-            taskItem = RNFetchBlob.fetch(ops.method, BASE_URL + url, ops.headers, ops.body)
+            taskItem = RNFetchBlob.fetch(ops.method, (server || BASE_URL) + url, ops.headers, ops.body)
             .progress({ interval: 500 }, (received, total) => {
                 if (ops.progress) {
                     ops.progress(received, total, taskItem);
