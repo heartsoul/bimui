@@ -5,6 +5,7 @@ import ThemeDefault from './AppTheme.default'
 import ThemeGreen from './AppTheme.green'
 import ThemeWhite from './AppTheme.white'
 import ThemeTurquoise from './AppTheme.turquoise'
+import ThemeRed from './AppTheme.red'
 // See https://mydevice.io/devices/ for device dimensions
 const X_WIDTH = 375
 const X_HEIGHT = 812
@@ -35,6 +36,7 @@ const AppTheme = {
     green: ThemeGreen,
     white: ThemeWhite,
     turquoise: ThemeTurquoise,
+    red: ThemeRed,
   },
 
   set(theme) {

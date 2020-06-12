@@ -154,19 +154,14 @@ export function requestJSON(url, options, server = null) {
             reject(new Error('重复请求'));
             return;
         }
-        let taskItem = {};
-        if (!syncKey || forceFetch) {
-            taskItem = fetch((server || BASE_URL) + url, ops)
-            .then(checkStatus)
-            .then(parseJSON);
-        }
+        const taskItem = fetch((server || BASE_URL) + url, ops);
         if (syncKey) {
             apiTaskLst[syncKey] = {
                 expries,
                 taskItem,
             };
         }
-        taskItem.then((data) => {
+        taskItem.then(checkStatus).then(parseJSON).then((data) => {
                 if (syncKey) {
                     const { taskItem: taskItemFind = null } = apiTaskLst[syncKey] || {};
                     if (taskItemFind != taskItem) {
