@@ -7,7 +7,7 @@ const primaryColor = '#BF0008'
 // secondary color
 const secondaryColor = '#fb3333'
 // default color
-const defaultColor = '#fffff'
+const defaultColor = '#ffffff'
 // default text color
 const defaultTextColor = '#333333'
 
